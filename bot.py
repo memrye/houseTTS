@@ -14,7 +14,8 @@ async def on_message(message):
         return
     
     if message.content.startswith("!say "):
-        text = message.content[5:]
+        text = message.author + " says " + message.content[5:]
+        requests.post(TTS_SERVER_URL, json={"text": text})
         requests.post(TTS_SERVER_URL, json={"text": text})
         await message.channel.send(f"Speaking: {text}")
 
