@@ -6,6 +6,10 @@ import subprocess
 
 app = Flask(__name__)
 
+#announcer = "/MessageReceived.mp3"
+
+announcer = os.path.join(os.path.dirname(__file__), "MessageReceived.mp3")
+
 @app.route("/tts", methods=["POST"])
 def tts():
     text = request.json.get("text", "")
@@ -16,6 +20,8 @@ def tts():
     tmp_path = tempfile.mktemp(suffix=".mp3")
     tts = gTTS(text)
     tts.save(tmp_path)
+
+    subprocess.run(["mpg123", announcer])
 
     # Play audio through default system output (Bluetooth speaker)
     subprocess.run(["mpg123", tmp_path])  # mpg123 can play MP3s
