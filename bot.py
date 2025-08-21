@@ -8,30 +8,32 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-sterling = "poundsterl1ng"
-maeve = "maeveve"
-gee = "gee6033"
+user_data = {}  # stores {username: chosen_name}
 
 space = ". "
 
 @client.event
 async def on_message(message):
+    # --- Ignore messages from the bot itself ---
     if message.author == client.user:
         return
+
+    # --- Register a nickname ---
+    if message.content.startswith("!r "):
+        content = message.content[3:].strip()
+        username = str(message.author.name)
+        user_data[username] = content  # save nickname
+        await message.channel.send(f"{username}, I'll call you {content} now!")
     
     if message.content.startswith("!s "):
-        if str(message.author) == maeve:
-            text = "maeve says " + message.content[3:] + space + message.content[3:]
+        username = str(message.author.name)
+        # Use registered nickname if exists, otherwise default to username
+        display_name = user_data.get(username, username)
 
-        elif str(message.author) == sterling:
-            text = "sterling says " + message.content[3:] + space + message.content[3:]
+        text_body = message.content[3:].strip()
+        text = f"{display_name} says {text_body} {text_body}"
 
-        elif str(message.author) == gee:
-            text = "gee says " + message.content[3:] + space + message.content[3:]
-
-        else:
-            text = str(message.author) + " says " + message.content[3:] + space + message.content[3:]
-        
+        # Send to TTS server
         requests.post(TTS_SERVER_URL, json={"text": text})
         await message.channel.send(f"Speaking: {text}")
 
