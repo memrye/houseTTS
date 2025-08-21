@@ -1,7 +1,11 @@
 import discord
 import requests
+import os
+from dotenv import load_dotenv
 
-TOKEN = "REPLACE-ME"
+load_dotenv()
+
+TOKEN = os.getenv("DISCORD_TOKEN")
 TTS_SERVER_URL = "http://127.0.0.1:5000/tts"
 
 intents = discord.Intents.default()
