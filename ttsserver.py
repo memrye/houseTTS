@@ -24,7 +24,7 @@ def tts():
     volume = request.json.get("volume", "")
     if volume:
         # Set volume for playback
-        masterVolume = (float(volume))
+        masterVolume = float(volume)
     
     if text:
         # Generate TTS audio file
@@ -33,18 +33,18 @@ def tts():
         tts.save(tmp_path)
 
         playback.load_file(announcer)
-        playback.set_volume(masterVolume)
         playback.play()
+        playback.set_volume(masterVolume)
         while playback.active:
             import time
             time.sleep(0.1)
 
         playback.load_file(tmp_path)
-        playback.set_volume(masterVolume)
         playback.play()
+        playback.set_volume(masterVolume)
         while playback.active:
             import time
-            time.sleep(0.1)       # returns a handle
+            time.sleep(0.1)  
 
         os.remove(tmp_path)
         return {"status": "played"}, 200
