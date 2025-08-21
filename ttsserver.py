@@ -3,8 +3,13 @@ from gtts import gTTS
 import os
 import tempfile
 import subprocess
+from just_playback import Playback
+
 
 app = Flask(__name__)
+
+playback = Playback()
+playback.set_volume(0.8)
 
 #announcer = "/MessageReceived.mp3"
 
@@ -13,21 +18,27 @@ announcer = os.path.join(os.path.dirname(__file__), "MessageReceived.mp3")
 @app.route("/tts", methods=["POST"])
 def tts():
     text = request.json.get("text", "")
-    if not text:
-        return {"error": "No text provided"}, 400
+    volume = request.json.get("volume", "")
+    if volume:
+        # Set volume for playback
+        Playback.set_volume(float(volume))
+    
+    if text:
+        # Generate TTS audio file
+        tmp_path = tempfile.mktemp(suffix=".mp3")
+        tts = gTTS(text)
+        tts.save(tmp_path)
 
-    # Generate TTS audio file
-    tmp_path = tempfile.mktemp(suffix=".mp3")
-    tts = gTTS(text)
-    tts.save(tmp_path)
+        playback.load_file(announcer)
+        playback.play()
+        playback.wait_done()
 
-    subprocess.run(["mpg123", announcer])
+        playback.load_file(tmp_path)
+        playback.play()
+        playback.wait_done()
 
-    # Play audio through default system output (Bluetooth speaker)
-    subprocess.run(["mpg123", tmp_path])  # mpg123 can play MP3s
-
-    os.remove(tmp_path)
-    return {"status": "played"}, 200
-
+        os.remove(tmp_path)
+        return {"status": "played"}, 200
+        
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

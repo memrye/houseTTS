@@ -16,12 +16,24 @@ user_data = {}  # stores {username: chosen_name}
 
 repeatMsgLen = 100
 maxMsgLen = 200  # Discord's max message length
+volumeDefault = 80
+
 
 @client.event
 async def on_message(message):
     # --- Ignore messages from the bot itself ---
     if message.author == client.user:
         return
+    
+    if message.content.startswith("!v "):
+        content = message.content[3:].strip()
+        if not content.isNumeric():
+            return await message.channel.send("Volume must be a number between 0 and 100")
+        else:
+            if 0 <= int(content) <= 100:
+                volumeDefault = int(content) / 100
+                requests.post(TTS_SERVER_URL, json={"volume": volumeDefault})
+                return await message.channel.send(f"Volume set to {volumeDefault}%")
 
     # --- Register a nickname ---
     if message.content.startswith("!r "):
