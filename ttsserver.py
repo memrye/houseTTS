@@ -15,6 +15,7 @@ def tts():
     text = request.json.get("text", "")
     volume = request.json.get("volume", "")
     af_volume = float(volume) if volume else 0.8
+    print(f"[DEBUG] Requested volume: {volume} -> Using af_volume: {af_volume}")
     
     if text:
         # Generate TTS audio file
@@ -22,13 +23,14 @@ def tts():
         tts = gTTS(text)
         tts.save(tmp_path)
 
-        # FFmpeg command
-        subprocess.run([
+        announcer_cmd = [
             "ffplay", "-autoexit", "-nodisp",
             "-af", f"volume={af_volume}",
             announcer
-        ])
-
+        ]
+        print(f"[DEBUG] Playing announcer with command: {announcer_cmd}")
+        subprocess.run(announcer_cmd)
+        
         subprocess.run([
             "ffplay", "-autoexit", "-nodisp",
             "-af", f"volume={af_volume}",
