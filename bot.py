@@ -10,7 +10,8 @@ client = discord.Client(intents=intents)
 
 user_data = {}  # stores {username: chosen_name}
 
-space = ". "
+repeatMsgLen = 100
+maxMsgLen = 200  # Discord's max message length
 
 @client.event
 async def on_message(message):
@@ -23,7 +24,7 @@ async def on_message(message):
         content = message.content[3:].strip()
         username = str(message.author.name)
         user_data[username] = content  # save nickname
-        await message.channel.send(f"{username}, I'll call you {content} now!")
+        await message.channel.send(f"I'll call you {content} now")
     
     if message.content.startswith("!s "):
         username = str(message.author.name)
@@ -31,7 +32,12 @@ async def on_message(message):
         display_name = user_data.get(username, username)
 
         text_body = message.content[3:].strip()
-        text = f"{display_name} says {text_body} {text_body}"
+        if len(text_body) > maxMsgLen:
+            return await message.channel.send(f"Try me bitch, I can only handle {maxMsgLen} characters at a time!")
+        if len(text_body) > repeatMsgLen:
+            text = f"{display_name} says {text_body}"
+        else:
+            text = f"{display_name} says {text_body} {text_body}"
 
         # Send to TTS server
         requests.post(TTS_SERVER_URL, json={"text": text})
