@@ -27,13 +27,13 @@ async def on_message(message):
     
     if message.content.startswith("!v "):
         content = message.content[3:].strip()
-        if not content.isNumeric():
+        if not content.isnumeric():
             return await message.channel.send("Volume must be a number between 0 and 100")
         else:
             if 0 <= int(content) <= 100:
                 volumeDefault = int(content) / 100
                 requests.post(TTS_SERVER_URL, json={"volume": volumeDefault})
-                return await message.channel.send(f"Volume set to {volumeDefault}%")
+                return await message.channel.send(f"Volume set to {content}%")
 
     # --- Register a nickname ---
     if message.content.startswith("!r "):

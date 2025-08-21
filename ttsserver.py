@@ -31,11 +31,15 @@ def tts():
 
         playback.load_file(announcer)
         playback.play()
-        playback.wait_done()
+        while playback.active:
+            import time
+            time.sleep(0.1)
 
         playback.load_file(tmp_path)
         playback.play()
-        playback.wait_done()
+        while playback.active:
+            import time
+            time.sleep(0.1)       # returns a handle
 
         os.remove(tmp_path)
         return {"status": "played"}, 200
