@@ -3,16 +3,8 @@ from gtts import gTTS
 import os
 import tempfile
 import subprocess
-from just_playback import Playback
 
-
-app = Flask(__name__)
-
-masterVolume = 0.8  
-
-playback = Playback()
-
-playback.set_volume(masterVolume)
+app = Flask(__name__) 
 
 #announcer = "/MessageReceived.mp3"
 
@@ -22,9 +14,7 @@ announcer = os.path.join(os.path.dirname(__file__), "MessageReceived.mp3")
 def tts():
     text = request.json.get("text", "")
     volume = request.json.get("volume", "")
-    if volume:
-        # Set volume for playback
-        masterVolume = float(volume)
+    af_volume = float(volume) if volume else 0.8
     
     if text:
         # Generate TTS audio file
@@ -32,19 +22,18 @@ def tts():
         tts = gTTS(text)
         tts.save(tmp_path)
 
-        playback.load_file(announcer)
-        playback.play()
-        playback.set_volume(masterVolume)
-        while playback.active:
-            import time
-            time.sleep(0.1)
+        # FFmpeg command
+        subprocess.run([
+            "ffplay", "-autoexit", "-nodisp",
+            "-af", f"volume={af_volume}",
+            announcer
+        ])
 
-        playback.load_file(tmp_path)
-        playback.play()
-        playback.set_volume(masterVolume)
-        while playback.active:
-            import time
-            time.sleep(0.1)  
+        subprocess.run([
+            "ffplay", "-autoexit", "-nodisp",
+            "-af", f"volume={af_volume}",
+            tmp_path
+        ])
 
         os.remove(tmp_path)
         return {"status": "played"}, 200
