@@ -23,19 +23,13 @@ def tts():
         tts = gTTS(text)
         tts.save(tmp_path)
 
-        announcer_cmd = [
-            "ffplay", "-autoexit", "-nodisp",
-            "-af", f"volume={af_volume}",
-            announcer
-        ]
-        print(f"[DEBUG] Playing announcer with command: {announcer_cmd}")
-        subprocess.run(announcer_cmd)
-        
-        subprocess.run([
-            "ffplay", "-autoexit", "-nodisp",
-            "-af", f"volume={af_volume}",
-            tmp_path
-        ])
+        newstring = "volume=" + str(af_volume)
+
+        # Play announcer
+        subprocess.run(["ffplay", "-autoexit", "-nodisp", "-af", newstring, announcer])
+
+        # Play TTS
+        subprocess.run(["ffplay", "-autoexit", "-nodisp", "-af", newstring, tmp_path])
 
         os.remove(tmp_path)
         return {"status": "played"}, 200
