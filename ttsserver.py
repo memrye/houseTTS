@@ -8,8 +8,11 @@ from just_playback import Playback
 
 app = Flask(__name__)
 
+masterVolume = 0.8  
+
 playback = Playback()
-playback.set_volume(0.8)
+
+playback.set_volume(masterVolume)
 
 #announcer = "/MessageReceived.mp3"
 
@@ -21,7 +24,7 @@ def tts():
     volume = request.json.get("volume", "")
     if volume:
         # Set volume for playback
-        Playback.set_volume(float(volume))
+        masterVolume = (float(volume))
     
     if text:
         # Generate TTS audio file
@@ -30,12 +33,14 @@ def tts():
         tts.save(tmp_path)
 
         playback.load_file(announcer)
+        playback.set_volume(masterVolume)
         playback.play()
         while playback.active:
             import time
             time.sleep(0.1)
 
         playback.load_file(tmp_path)
+        playback.set_volume(masterVolume)
         playback.play()
         while playback.active:
             import time
