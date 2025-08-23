@@ -22,12 +22,12 @@ announcer = os.path.join(os.path.dirname(__file__), "MessageReceived.mp3")
 
 @app.route("/tts", methods=["POST"])
 def tts():
+    # Get text body
     text = request.json.get("text", "")
-    volume = request.json.get("volume", "")
-    af_volume = float(volume) if volume else 0.8
-    
-    # Log to file instead of print
-    logging.debug(f"Request received - text: '{text}', requested volume: {volume}, using af_volume: {af_volume}")
+
+    # Get volume, default to 0.8
+    newVolume = request.json.get("volume", "")
+    volume = float(newVolume) if newVolume else 0.8
     
     if text:
         # Generate TTS audio file
@@ -37,25 +37,20 @@ def tts():
             tts.save(tmp_path)
             logging.debug(f"TTS audio saved to: {tmp_path}")
 
-            # Apply volume filter to both files
-            volume_filter = f"volume={af_volume}"
-            logging.debug(f"Applying volume filter: {volume_filter}")
+            playbackVolume = f"volume={volume}"
 
-            # Play announcer with volume adjustment
-            logging.debug("Playing announcer...")
             subprocess.run([
                 "ffplay", "-autoexit", "-nodisp", 
-                "-af", volume_filter, announcer
+                "-af", playbackVolume, announcer
             ], check=True)
 
-            # Play TTS with volume adjustment
             logging.debug("Playing TTS audio...")
             subprocess.run([
                 "ffplay", "-autoexit", "-nodisp", 
-                "-af", volume_filter, tmp_path
+                "-af", playbackVolume, tmp_path
             ], check=True)
-
-            logging.debug("Playback completed successfully")
+            
+            volume = 0.8
             return {"status": "played"}, 200
             
         except subprocess.CalledProcessError as e:
@@ -71,7 +66,6 @@ def tts():
             try:
                 if os.path.exists(tmp_path):
                     os.remove(tmp_path)
-                    logging.debug(f"Temporary file removed: {tmp_path}")
             except Exception as e:
                 logging.warning(f"Could not remove temp file: {e}")
 
