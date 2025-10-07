@@ -1,4 +1,6 @@
 import discord
+from discord import app_commands
+from discord.ext import commands
 import requests
 import os
 from dotenv import load_dotenv
@@ -7,16 +9,11 @@ load_dotenv()
 
 # Import banned words list
 bannedWords = os.getenv("BANNED_WORDS")
-bannedList = bannedWords.split(",") if bannedWords else []
+bannedList = [word.strip() for word in bannedWords.split(",")] if bannedWords else []
 
 # Load URL and token
 TOKEN = os.getenv("DISCORD_TOKEN")
 TTS_SERVER_URL = "http://127.0.0.1:5000/tts"
-
-# Initialise Discord Bot
-intents = discord.Intents.default()
-intents.message_content = True
-client = discord.Client(intents=intents)
 
 # Create user dictionary and imports admin list
 userData = {}  # stores {username: chosen_name}
@@ -25,92 +22,89 @@ adminList = admins.split(",") if admins else []
 
 # Constants
 maxMsgRepeatLength = 90
-maxMsgLength = 150  
+maxMsgLength = 150
 volumeDefault = 80
 
-def returnUsername(username):
-    return userData.get(username, username)
+# Initialise Discord Bot
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Converts all strings to lower case and checks for banned words
-def checkForBannedWords(discordMessage):
-    return any(word.lower() in discordMessage.lower() for word in bannedList)
+# ----------------------------
+# /r Command — Rename Yourself
+# ----------------------------
+@bot.tree.command(
+    name="r",
+    description="Set a nickname for yourself (max 15 characters)."
+)
+@app_commands.describe(
+    nickname="What you want me to call you (max 15 characters)."
+)
+async def rename(
+    interaction: discord.Interaction,
+    nickname: app_commands.Range[str, 1, 15]
+):
+    author = str(interaction.user.name)
+    userData[author] = nickname.strip()
+    await interaction.response.send_message(f"I'll call you {nickname} now.")
 
-# Update nickname
-async def renameCommand(message):
-    content = message.content[3:].strip()
-    author = str(message.author.name)
-    userData[author] = content  # save nickname
-    return await message.channel.send(f"I'll call you {content} now")
 
-# Change volume 
-async def volumeCommand(message):
-    # Block non-admin users from changing volume
-    if str(message.author.name) not in adminList:
-        return await message.channel.send("Oh no no girl")
+# ---------------------------------------
+# /s Command — Speak Message with Optional Int
+# ---------------------------------------
+@bot.tree.command(
+    name="s",
+    description="Speak a message with an optional number (1–100)."
+)
+@app_commands.describe(
+    text="The text you want me to say.",
+    number="An optional integer between 1 and 100."
+)
+async def speak(
+    interaction: discord.Interaction,
+    text: str,
+    number: app_commands.Range[int, 1, 100] | None = None
+):
+    author = interaction.user.name
+    discordMessage = text.strip()
 
-    # Get the new volume
-    content = message.content[3:].strip()
+    if any(word.lower() in discordMessage.lower() for word in bannedList):
+        await interaction.response.send_message("Chile stop it...")
+        return
 
-    # If not a number cancel
-    if not content.isnumeric():
-        return await message.channel.send("Volume must be a number between 0 and 100")
-    else:
-        if 0 <= int(content) <= 100:
-            volumeDefault = int(content)  # Store as percentage (0-100)
-            # Send test volume to TTS server (convert to 0.0-1.0 scale)
-            requests.post(TTS_SERVER_URL, json={"volume": volumeDefault / 100})
-            return await message.channel.send(f"Volume set to {content}%")
-        else:
-            return await message.channel.send("Volume must be a number between 0 and 100")
-
-# Checks if the message is too long and if not whether to repeat
-async def textCheck(message, author, discordMessage):
     if len(discordMessage) > maxMsgLength:
-        # Blocks the message for being too long
-        await message.channel.send(f"Try me bitch, keep it shorter than {maxMsgLength} characters")
-        return None
+        await interaction.response.send_message(
+            f"Try me bitch, keep it shorter than {maxMsgLength} characters"
+        )
+        return
+
     if len(discordMessage) > maxMsgRepeatLength:
-        # Play the message once
-        return f"{author} says {discordMessage}"
+        text_to_say = f"{author} says {discordMessage}"
     else:
-        # Repeat the message a second time
-        return f"{author} says {discordMessage} {discordMessage}"
+        text_to_say = f"{author} says {discordMessage} {discordMessage}"
 
-async def speakCommand(message):
-    # Get author and message
-    author = returnUsername(str(message.author.name))
-    discordMessage = message.content[3:].strip()
-        
-    if checkForBannedWords(discordMessage):
-        return await message.channel.send("Chile stop it...")
-
-    # Run text checks
-    text = await textCheck(message, author, discordMessage)
-    if not text:
-        return
-
-    # Send to TTS server WITH volume (convert to 0.0-1.0 scale)
-    requests.post(TTS_SERVER_URL, json={"text": text, "volume": volumeDefault / 100})
-    await message.channel.send(f"{text}")
-
-@client.event
-async def on_message(message):
-    global volumeDefault  # Add this to modify the global variable
     
-    # Ignore messages from the bot
-    if message.author == client.user:
-        return
-    
-    # Volume Command
-    if message.content.startswith("!v "):
-        await volumeCommand(message)
+    payload = {
+        "text": text_to_say,
+        "volume": (number or volumeDefault) / 100
+        }
 
-    # Rename Command
-    if message.content.startswith("!r "):
-        await renameCommand(message)
-    
-    # Speak Command
-    if message.content.startswith("!s "):
-        await speakCommand(message)
+    requests.post(TTS_SERVER_URL, json=payload)
+    await interaction.response.send_message(f"{text_to_say}")
 
-client.run(TOKEN)
+
+# ----------------------------
+# Bot Ready Event
+# ----------------------------
+
+@bot.event
+async def on_ready():
+    await bot.tree.sync()
+    print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
+    print("Slash commands synced and ready.")
+
+# ----------------------------
+# Run the Bot
+# ----------------------------
+
+bot.run(TOKEN)

@@ -4,17 +4,16 @@ import os
 import tempfile
 import subprocess
 import logging
-from datetime import datetime
 
-app = Flask(__name__) 
+app = Flask(__name__)
 
-# Setup logging to file
+# Setup logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('tts_debug.log'),
-        logging.StreamHandler()  # Also print to console
+        logging.StreamHandler()
     ]
 )
 
@@ -22,56 +21,49 @@ announcer = os.path.join(os.path.dirname(__file__), "MessageReceived.mp3")
 
 @app.route("/tts", methods=["POST"])
 def tts():
-    # Get text body
-    text = request.json.get("text", "")
+    text = request.json.get("text", "").strip()
+    volume = float(request.json.get("volume", 0.8))
 
-    # Get volume, default to 0.8
-    newVolume = request.json.get("volume", "")
-    volume = float(newVolume) if newVolume else 0.8
-    
-    if text:
-        # Generate TTS audio file
-        tmp_path = tempfile.mktemp(suffix=".mp3")
-        try:
-            tts = gTTS(text)
-            tts.save(tmp_path)
-            logging.debug(f"TTS audio saved to: {tmp_path}")
+    if not text:
+        logging.warning("Empty text received in request")
+        return {"status": "error", "message": "No text provided"}, 400
 
-            playbackVolume = f"volume={volume}"
+    tmp_path = tempfile.mktemp(suffix=".mp3")
+    try:
+        # Generate TTS with gTTS
+        tts = gTTS(text)
+        tts.save(tmp_path)
+        logging.debug(f"TTS audio saved to: {tmp_path}")
 
-            subprocess.run([
-                "ffplay", "-autoexit", "-nodisp", 
-                "-af", playbackVolume, announcer
-            ], check=True)
+        playbackVolume = f"volume={volume}"
 
-            logging.debug("Playing TTS audio...")
-            subprocess.run([
-                "ffplay", "-autoexit", "-nodisp", 
-                "-af", playbackVolume, tmp_path
-            ], check=True)
-            
-            volume = 0.8
-            return {"status": "played"}, 200
-            
-        except subprocess.CalledProcessError as e:
-            logging.error(f"FFplay error: {e}")
-            return {"status": "error", "message": "Playback failed"}, 500
-            
-        except Exception as e:
-            logging.error(f"Unexpected error: {e}")
-            return {"status": "error", "message": "Internal server error"}, 500
-            
-        finally:
-            # Clean up temporary file
+        # Play short notification sound first (optional)
+        subprocess.Popen([
+            "ffplay", "-autoexit", "-nodisp", "-loglevel", "quiet",
+            "-af", playbackVolume, announcer
+        ])
+
+        # Then play the generated TTS
+        subprocess.Popen([
+            "ffplay", "-autoexit", "-nodisp", "-loglevel", "quiet",
+            "-af", playbackVolume, tmp_path
+        ])
+
+        logging.info(f"TTS played for: {text}")
+        return {"status": "played"}, 200
+
+    except Exception as e:
+        logging.error(f"TTS generation or playback error: {e}")
+        return {"status": "error", "message": str(e)}, 500
+
+    finally:
+        if os.path.exists(tmp_path):
             try:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
+                os.remove(tmp_path)
+                logging.debug("Temp file removed")
             except Exception as e:
                 logging.warning(f"Could not remove temp file: {e}")
 
-    else:
-        logging.warning("Empty text received in request")
-        return {"status": "error", "message": "No text provided"}, 400
 
 if __name__ == "__main__":
     logging.info("TTS Server starting...")
