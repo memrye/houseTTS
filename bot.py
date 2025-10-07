@@ -69,37 +69,35 @@ async def speak(
     author = interaction.user.name
     discordMessage = text.strip()
 
+    # Check banned words
     if any(word.lower() in discordMessage.lower() for word in bannedList):
         await interaction.response.send_message("Chile stop it...")
         return
 
+    # Check length
     if len(discordMessage) > maxMsgLength:
         await interaction.response.send_message(
             f"Try me bitch, keep it shorter than {maxMsgLength} characters"
         )
         return
 
+    # Format text
     if len(discordMessage) > maxMsgRepeatLength:
         text_to_say = f"{author} says {discordMessage}"
     else:
         text_to_say = f"{author} says {discordMessage} {discordMessage}"
 
-    await interaction.response.defer()
+    # Reply in chat first
+    await interaction.response.send_message(f"{text_to_say}")
 
-    payload = {
-        "text": text_to_say,
-        "volume": (number or volumeDefault) / 100
-        }
+    # Prepare TTS payload
+    payload = {"text": text_to_say, "volume": (number or volumeDefault) / 100}
 
-    # Post to TTS server
+    # Send to TTS server (can block, it's fine now)
     try:
         requests.post(TTS_SERVER_URL, json=payload)
     except Exception as e:
         logging.error(f"TTS server error: {e}")
-
-    requests.post(TTS_SERVER_URL, json=payload)
-    await interaction.response.send_message(f"{text_to_say}")
-
 
 # ----------------------------
 # Bot Ready Event
