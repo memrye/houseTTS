@@ -2,6 +2,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import requests
+import logging
 import os
 from dotenv import load_dotenv
 
@@ -48,10 +49,10 @@ async def rename(
     userData[author] = nickname.strip()
     await interaction.response.send_message(f"I'll call you {nickname} now.")
 
-
 # ---------------------------------------
 # /s Command — Speak Message with Optional Int
-# ---------------------------------------
+# ---------------------------------------#
+
 @bot.tree.command(
     name="s",
     description="Speak a message with an optional number (1–100)."
@@ -83,11 +84,18 @@ async def speak(
     else:
         text_to_say = f"{author} says {discordMessage} {discordMessage}"
 
-    
+    await interaction.response.defer()
+
     payload = {
         "text": text_to_say,
         "volume": (number or volumeDefault) / 100
         }
+
+    # Post to TTS server
+    try:
+        requests.post(TTS_SERVER_URL, json=payload)
+    except Exception as e:
+        logging.error(f"TTS server error: {e}")
 
     requests.post(TTS_SERVER_URL, json=payload)
     await interaction.response.send_message(f"{text_to_say}")
