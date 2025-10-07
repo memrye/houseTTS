@@ -38,13 +38,13 @@ def tts():
         playbackVolume = f"volume={volume}"
 
         # Play short notification sound first (optional)
-        subprocess.Popen([
+        subprocess.run([
             "ffplay", "-autoexit", "-nodisp", "-loglevel", "quiet",
             "-af", playbackVolume, announcer
         ])
 
         # Then play the generated TTS
-        subprocess.Popen([
+        subprocess.run([
             "ffplay", "-autoexit", "-nodisp", "-loglevel", "quiet",
             "-af", playbackVolume, tmp_path
         ])
